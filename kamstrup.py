@@ -19,8 +19,7 @@ import math
 # These are the variables I have managed to identify
 # Submissions welcome.
 
-kamstrup_382_var = {
-
+kamstrup_382_var = ({'baudrate':1200},{
 	0x0001: "Energy in",
 	0x0002: "Energy out",
 
@@ -38,7 +37,25 @@ kamstrup_382_var = {
 	0x0438: "Power p1",
 	0x0439: "Power p2",
 	0x043a: "Power p3",
-}
+
+
+})
+
+kamstrup_multical402_var = ({'baudrate':1200},{
+	0x004A: "Some flow",
+	0x003C: "Energy",
+	0x0044: "Volume",
+	0x0050: "Power",
+	0x0056: "FlowTemp",# "Current flow temperature",
+	0x0057: "RetFlowTemp",#"Current return flow temperature",
+	0x0058: "T3Temp",#"Current temperature T3",
+	0x007A: "T4Temp",#"Current temperature T4",
+	0x0059: "DiffTemp",#"Current temperature difference",
+	0x005B: "FlowPressure",#"Pressure in flow",
+	0x005C: "ReturnFlowPressure",#"Pressure in return flow",
+	0x004A: "Flow",#"Current flow in flow",
+	0x004B: "ReturnFlow",#"Current flow in return flow"
+})
 
 
 #######################################################################
@@ -102,8 +119,11 @@ class kamstrup(object):
 
 		self.ser = serial.Serial(
 		    port = serial_port,
-		    baudrate = 9600,
+		    baudrate = 1200,
 		    timeout = 1.0)
+
+	def setBaudrate(self, baudrate):
+		self.ser.baudrate=baudrate
 
 	def debug(self, dir, b):
 		for i in b:
@@ -126,7 +146,6 @@ class kamstrup(object):
 		b = bytearray(b)
 		self.debug("Wr", b);
 		self.ser.write(b)
-
 	def rd(self):
 		a = self.ser.read(1)
 		if len(a) == 0:
@@ -192,16 +211,25 @@ class kamstrup(object):
 		self.send(0x80, (0x3f, 0x10, 0x01, nbr >> 8, nbr & 0xff))
 
 		b = self.recv()
+		print(str(hex(nbr)))
+		#print(str(b[0])+" * " + str(b[1]))
+		if b :
+			print(map(hex,b))
+
 		if b == None:
 			return (None, None)
 
-		if b[0] != 0x3f or b[1] != 0x10:
+		elif b[0] != 0x3f or b[1] != 0x10:
 			return (None, None)
 
-		if b[2] != nbr >> 8 or b[3] != nbr & 0xff:
+		elif len(b)==2 and b[0] == 0x3f and b[1] == 0x10:
+			# default reply
 			return (None, None)
 
-		if b[4] in units:
+		#		if b[2] != nbr >> 8 or b[3] != nbr & 0xff:
+		#			return (None, None)
+
+		if b[4] in units.keys():
 			u = units[b[4]]
 		else:
 			u = None
@@ -221,7 +249,7 @@ class kamstrup(object):
 			i = -i
 		x *= i
 
-		if False:
+		if True:
 			# Debug print
 			s = ""
 			for i in b[:4]:
@@ -242,8 +270,12 @@ if __name__ == "__main__":
 
 	import time
 
-	foo = kamstrup()
+	# foo = kamstrup(serial_port="/dev/tty.PL2303-00001004")
+	foo = kamstrup(serial_port="/dev/ttyUSB0")
 
-	for i in kamstrup_382_var:
+	meter=kamstrup_multical402_var
+	foo.setBaudrate(meter[0]['baudrate'])
+	# for i in kamstrup_382_var:
+	for i in meter[1]:
 		x,u = foo.readvar(i)
-		print("%-25s" % kamstrup_382_var[i], x, u)
+		print("%-25s" % meter[1][i], x, u)
